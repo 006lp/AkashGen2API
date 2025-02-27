@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[简体中文](https://github.com/006lp/AkashGen2API/blob/main/README_CN.md) | [English](https://github.com/006lp/AkashGen2API)
+[简体中文](https://github.com/006lp/AkashGen2API/blob/main/README_CN.md) | [English](https://github.com/006lp/AkashGen2API)  || [Python Version](https://github.com/006lp/AkashGen2API-Python)
 
 </div>
 

@@ -43,7 +43,8 @@ app.get(`${API_PREFIX}images`, async (req, res) => {
     }
 
     try {
-        const status = await checkImageStatus(jobId);
+        // 使用轮询等待图像生成完成
+        const status = await pollImageStatus(jobId);
 
         if (status.status !== 'completed') {
             return res.status(404).json({ error: 'Image not ready or not found' });
@@ -63,7 +64,7 @@ app.get(`${API_PREFIX}images`, async (req, res) => {
 
 // Chat completions API 路由
 app.post(`${API_PREFIX}v1/chat/completions`, authenticateToken, async (req, res) => {
-    const { messages, model, stream } = req.body;
+    const { messages, model, stream, waitForImage = false } = req.body;
 
     if (!messages || !Array.isArray(messages)) {
         return res.status(400).json({ error: 'Invalid messages format' });
@@ -85,24 +86,46 @@ app.post(`${API_PREFIX}v1/chat/completions`, authenticateToken, async (req, res)
             const jobId = match[1];
             const prompt = match[2];
             const negative = match[3];
-
-            // 构造 markdown 链接
             const imageUrl = `${req.protocol}://${req.get('host')}${API_PREFIX}images?id=${jobId}`;
-            const markdownResponse = `<image_generation> jobId='${jobId}' prompt='${prompt}' negative='${negative}'</image_generation>\n[${jobId}](${imageUrl})`;
 
-            res.json({
-                id: jobId,
-                model: model || 'AkashGen',
-                response: markdownResponse
-            });
-        } else {
-            res.json({
-                response: chatResponse
-            });
+            if (waitForImage) {
+                // 等待图像生成完成
+                try {
+                    await pollImageStatus(jobId);
+                    const markdownResponse = `<image_generation> jobId='${jobId}' prompt='${prompt}' negative='${negative}'</image_generation>\n![Generated Image](${imageUrl})`;
+
+                    res.json({
+                        id: jobId,
+                        model: model || 'AkashGen',
+                        response: markdownResponse,
+                        status: 'completed',
+                        imageUrl
+                    });
+                } catch (error) {
+                    res.json({
+                        id: jobId,
+                        model: model || 'AkashGen',
+                        response: `Image generation in progress. You can check status at ${imageUrl}`,
+                        status: 'pending',
+                        imageUrl
+                    });
+                }
+            } else {
+                // 不等待，立即返回 jobId 和 URL
+                const markdownResponse = `<image_generation> jobId='${jobId}' prompt='${prompt}' negative='${negative}'</image_generation>\n![Generated Image](${imageUrl})`;
+
+                res.json({
+                    id: jobId,
+                    model: model || 'AkashGen',
+                    response: markdownResponse,
+                    status: 'pending',
+                    imageUrl
+                });
+            }
         }
     } catch (error) {
         console.error('Error calling Akash API:', error);
-        res.status(500).json({ error: 'Failed to generate image' });
+        res.status(500).json({ error: 'Failed to process request', details: error.message });
     }
 });
 
