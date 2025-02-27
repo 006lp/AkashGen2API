@@ -1,0 +1,12 @@
+version: '3'
+
+services:
+  api:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - API_KEY=${API_KEY}
+      - SESSION_TOKEN=${SESSION_TOKEN}
+      - API_PREFIX=${API_PREFIX}
+    restart: always

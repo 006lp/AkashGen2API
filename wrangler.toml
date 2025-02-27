@@ -1,0 +1,7 @@
+name = "akashgen-api-proxy"
+main = "api/index.js"
+
+[vars]
+API_KEY = "default-secret-key"
+SESSION_TOKEN = ""
+API_PREFIX = "/"
