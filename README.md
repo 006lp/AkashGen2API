@@ -1,6 +1,7 @@
 # AkashGen2API 
 
 <div align="center">
+<img src="https://socialify.git.ci/006lp/AkashGen2API/image?font=KoHo&forks=1&issues=1&language=1&logo=https%3A%2F%2Fakash.network%2F_astro%2F2.Dr8ojBlO_1SRa25.webp&name=1&owner=1&pattern=Circuit+Board&pulls=1&stargazers=1&theme=Light" alt="AkashGen2API" width="640" height="320" />
 
 [简体中文](https://github.com/006lp/AkashGen2API/blob/main/README_CN.md) | [English](https://github.com/006lp/AkashGen2API)
 </div>
