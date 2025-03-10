@@ -14,6 +14,8 @@
 - 通过 Bearer 令牌进行身份验证
 - 通过专用端点检索图像
 - 可部署到 Vercel、Cloudflare Workers 或 Docker
+- 支持轮询图像生成状态，包括处理失败和超时情况
+- 详细的错误处理和日志记录
 
 ## 设置
 
@@ -21,25 +23,31 @@
 
 根据 `.env.example` 创建一个 `.env` 文件，并设置以下变量：
 
-- `API_KEY`：用于身份验证的密钥
-- `SESSION_TOKEN`：您的 AkashGen 会话令牌
+- `API_KEY`：用于身份验证的密钥（例如 `your-secret-key`）
+- `SESSION_TOKEN`：您的 AkashGen 会话令牌（从 AkashGen 网站获取）
 - `API_PREFIX`：API 路由前缀（默认：`/`）
 - `PORT`：服务器端口（默认：3000）
 
 ### 部署选项
 
-#### Vercel
+#### Vercel（推荐）
 
-1. 克隆此存储库
-2. 在 Vercel 中设置环境变量
-3. 部署到 Vercel
+1. **克隆此存储库**：
+   ```bash
+   git clone https://github.com/your-repo/AkashGen2API.git
+   ```
+2. **在 Vercel 中设置环境变量**：在 Vercel 控制面板中添加上述环境变量。
+3. **部署到 Vercel**：点击 Vercel 的“Import Project”按钮，选择您的 Git 仓库，然后按照提示部署。
 
-#### Cloudflare Workers
+#### Cloudflare Workers（未经测试）
 
-1. 在 `wrangler.toml` 中设置您的账户详细信息
-2. 运行 `wrangler publish`
+1. **配置 `wrangler.toml`**：在 `wrangler.toml` 文件中设置您的 Cloudflare Workers 账户详细信息。
+2. **发布应用**：
+   ```bash
+   wrangler publish
+   ```
 
-#### Docker
+#### Docker（未经测试）
 
 ```bash
 # 使用 docker-compose
@@ -68,7 +76,7 @@ Authorization: Bearer your-api-key
 POST /v1/chat/completions
 ```
 
-请求体：
+**请求体**：
 
 ```json
 {
@@ -78,17 +86,46 @@ POST /v1/chat/completions
       "content": "生成一个美丽的山水风景"
     }
   ],
-  "model": "AkashGen"
+  "model": "AkashGen",
+  "waitForImage": true
 }
 ```
 
-响应：
+- `waitForImage`：如果设置为 `true`，API 将等待图像生成完成再返回响应。默认值为 `true`，可不填此项。
+
+**响应**：
+
+成功时：
 
 ```json
 {
   "id": "job-id",
   "model": "AkashGen",
-  "response": "<image_generation> jobId='job-id' prompt='...' negative='...'</image_generation>\n[job-id](https://your-domain.com/images?id=job-id)"
+  "response": "<image_generation> jobId='job-id' prompt='...' negative='...'</image_generation>\n![Generated Image](https://your-domain.com/images?id=job-id)",
+  "status": "completed",
+  "imageUrl": "https://your-domain.com/images?id=job-id"
+}
+```
+
+失败时（暂时不清楚解决方法）：
+
+```json
+{
+  "error": "Image generation failed",
+  "details": "Failed to parse worker response: error decoding response body"
+}
+```
+
+- 当`details` 为 `Failed to parse worker response: error decoding response body` 时，会自动结束此次请求。
+
+> 在本地测试时，Akash也会出现这个报错，暂不明确为什么会产生这个问题，可能是Akash自身问题？
+
+超时时：
+
+```json
+{
+  "error": "Failed to wait for image generation",
+  "details": "Image generation timed out"
 }
 ```
 
@@ -98,7 +135,8 @@ POST /v1/chat/completions
 GET /images?id=job-id
 ```
 
-返回生成的图像（WebP 格式）。
+- 返回生成的图像（WebP 格式）。
+- 如果图像尚未准备好或找不到，将返回 HTTP 404 错误。
 
 #### 服务状态
 
@@ -106,10 +144,26 @@ GET /images?id=job-id
 GET /
 ```
 
-返回 "API service is running"
+- 返回 "API service is running"，用于检查服务是否在线。
 
 ```
 GET /ping
 ```
 
-返回 "pong"
+- 返回 "pong"，用于简单的健康检查。
+
+## 错误处理
+
+- **图像生成失败**：如果 AkashGen API 返回 `status: "failed"`，服务会立即返回一个包含错误信息的响应。
+- **图像生成超时**：如果轮询超时（默认20次尝试，每次间隔1秒），服务会返回超时错误。
+- **无法提取 jobId**：如果无法从 AkashGen 的响应中提取 `jobId`，会返回详细的错误信息和原始响应内容，方便调试。
+
+## 注意事项
+
+- 确保您的 `SESSION_TOKEN` 有效且未过期，否则 API 调用会失败。
+- 对于生产环境，建议使用 HTTPS 以确保数据传输的安全性。
+- 请注意 API 使用的限制和费用，确保符合 AkashGen 的使用条款。
+
+## 贡献
+
+欢迎提交 Pull Requests 或报告问题。如果您有任何改进建议，请随时联系我们。

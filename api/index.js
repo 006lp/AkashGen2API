@@ -218,7 +218,7 @@ function generateRequestId() {
 }
 
 // 轮询检查图像状态直到完成或失败
-async function pollImageStatus(jobId, maxAttempts = 30, interval = 1000) {
+async function pollImageStatus(jobId, maxAttempts = 20, interval = 1000) {
     let attempts = 0;
 
     while (attempts < maxAttempts) {
