@@ -64,7 +64,7 @@ app.get(`${API_PREFIX}images`, async (req, res) => {
 
 // Chat completions API 路由
 app.post(`${API_PREFIX}v1/chat/completions`, authenticateToken, async (req, res) => {
-    const { messages, model, stream } = req.body;
+    const { messages, model, stream, waitForImage = true } = req.body;
 
     if (!messages || !Array.isArray(messages)) {
         return res.status(400).json({ error: 'Invalid messages format' });
@@ -88,15 +88,35 @@ app.post(`${API_PREFIX}v1/chat/completions`, authenticateToken, async (req, res)
             const negative = match[3];
             const imageUrl = `${req.protocol}://${req.get('host')}${API_PREFIX}images?id=${jobId}`;
 
-            const markdownResponse = `<image_generation> jobId='${jobId}' prompt='${prompt}' negative='${negative}'</image_generation>\n![Generated Image](${imageUrl})`;
+            if (waitForImage) {
+                // 等待图像生成完成
+                try {
+                    const status = await pollImageStatus(jobId);
+                    const markdownResponse = `<image_generation> jobId='${jobId}' prompt='${prompt}' negative='${negative}'</image_generation>\n![Generated Image](${imageUrl})`;
 
-            res.json({
-                id: jobId,
-                model: model || 'AkashGen',
-                response: markdownResponse,
-                status: 'pending',
-                imageUrl
-            });
+                    res.json({
+                        id: jobId,
+                        model: model || 'AkashGen',
+                        response: markdownResponse,
+                        status: 'completed',
+                        imageUrl
+                    });
+                } catch (error) {
+                    console.error('Error waiting for image generation:', error);
+                    res.status(500).json({ error: 'Failed to wait for image generation', details: error.message });
+                }
+            } else {
+                // 不等待，立即返回 jobId 和 URL
+                const markdownResponse = `<image_generation> jobId='${jobId}' prompt='${prompt}' negative='${negative}'</image_generation>\n![Generated Image](${imageUrl})`;
+
+                res.json({
+                    id: jobId,
+                    model: model || 'AkashGen',
+                    response: markdownResponse,
+                    status: 'pending',
+                    imageUrl
+                });
+            }
         } else {
             res.status(400).json({ error: 'Failed to extract jobId from response' });
         }
