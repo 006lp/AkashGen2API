@@ -78,9 +78,12 @@ app.post(`${API_PREFIX}v1/chat/completions`, authenticateToken, async (req, res)
     try {
         const chatResponse = await callAkashAPI(userMessage.content);
 
+        // 确保 chatResponse 是一个字符串
+        let responseString = typeof chatResponse === 'string' ? chatResponse : JSON.stringify(chatResponse);
+
         // 提取 jobId 和 prompt
-        const regex = /<image_generation> jobId='([^']+)' prompt='([^']+)' negative='([^']+)'<\/image_generation>/;
-        const match = chatResponse.match(regex);
+        const regex = /<image_generation> jobId='([^']+)' prompt='([^']*)' negative='([^']*)'<\/image_generation>/;
+        const match = responseString.match(regex);
 
         if (match) {
             const jobId = match[1];
@@ -119,8 +122,8 @@ app.post(`${API_PREFIX}v1/chat/completions`, authenticateToken, async (req, res)
             }
         } else {
             // 增加详细日志记录
-            console.error('Failed to extract jobId from response. Full response:', chatResponse);
-            res.status(400).json({ error: 'Failed to extract jobId from response', details: { response: chatResponse } });
+            console.error('Failed to extract jobId from response. Full response:', responseString);
+            res.status(400).json({ error: 'Failed to extract jobId from response', details: { response: responseString } });
         }
     } catch (error) {
         console.error('Error calling Akash API:', error);
