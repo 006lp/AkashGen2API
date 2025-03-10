@@ -2,8 +2,7 @@
 
 <div align="center">
 
-[简体中文](https://github.com/006lp/AkashGen2API/blob/main/README_CN.md) | [English](https://github.com/006lp/AkashGen2API)  || [Python Version](https://github.com/006lp/AkashGen2API-Python)
-
+[简体中文](https://github.com/006lp/AkashGen2API/blob/main/README_CN.md) | [English](https://github.com/006lp/AkashGen2API)
 </div>
 
 这是一个用于 AkashGen 图像生成功能的 API 代理服务。它允许您通过简单的 API 接口轻松将 AkashGen 的图像生成集成到您的应用程序中。

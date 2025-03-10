@@ -64,7 +64,7 @@ app.get(`${API_PREFIX}images`, async (req, res) => {
 
 // Chat completions API 路由
 app.post(`${API_PREFIX}v1/chat/completions`, authenticateToken, async (req, res) => {
-    const { messages, model, stream, waitForImage = false } = req.body;
+    const { messages, model, stream } = req.body;
 
     if (!messages || !Array.isArray(messages)) {
         return res.status(400).json({ error: 'Invalid messages format' });
@@ -88,40 +88,17 @@ app.post(`${API_PREFIX}v1/chat/completions`, authenticateToken, async (req, res)
             const negative = match[3];
             const imageUrl = `${req.protocol}://${req.get('host')}${API_PREFIX}images?id=${jobId}`;
 
-            if (waitForImage) {
-                // 等待图像生成完成
-                try {
-                    await pollImageStatus(jobId);
-                    const markdownResponse = `<image_generation> jobId='${jobId}' prompt='${prompt}' negative='${negative}'</image_generation>\n![Generated Image](${imageUrl})`;
+            const markdownResponse = `<image_generation> jobId='${jobId}' prompt='${prompt}' negative='${negative}'</image_generation>\n![Generated Image](${imageUrl})`;
 
-                    res.json({
-                        id: jobId,
-                        model: model || 'AkashGen',
-                        response: markdownResponse,
-                        status: 'completed',
-                        imageUrl
-                    });
-                } catch (error) {
-                    res.json({
-                        id: jobId,
-                        model: model || 'AkashGen',
-                        response: `Image generation in progress. You can check status at ${imageUrl}`,
-                        status: 'pending',
-                        imageUrl
-                    });
-                }
-            } else {
-                // 不等待，立即返回 jobId 和 URL
-                const markdownResponse = `<image_generation> jobId='${jobId}' prompt='${prompt}' negative='${negative}'</image_generation>\n![Generated Image](${imageUrl})`;
-
-                res.json({
-                    id: jobId,
-                    model: model || 'AkashGen',
-                    response: markdownResponse,
-                    status: 'pending',
-                    imageUrl
-                });
-            }
+            res.json({
+                id: jobId,
+                model: model || 'AkashGen',
+                response: markdownResponse,
+                status: 'pending',
+                imageUrl
+            });
+        } else {
+            res.status(400).json({ error: 'Failed to extract jobId from response' });
         }
     } catch (error) {
         console.error('Error calling Akash API:', error);
@@ -165,19 +142,7 @@ async function callAkashAPI(content) {
 
     try {
         const response = await axios.post('https://chat.akash.network/api/chat', requestBody, { headers });
-
-        // 处理响应
-        const responseLines = response.data.split('\n');
-        let content = '';
-
-        for (const line of responseLines) {
-            if (line.startsWith('0:')) {
-                content = line.substring(2);
-                break;
-            }
-        }
-
-        return content;
+        return response.data;
     } catch (error) {
         console.error('Error calling Akash API:', error);
         throw error;
@@ -230,12 +195,19 @@ async function pollImageStatus(jobId, maxAttempts = 30, interval = 1000) {
                 return status;
             }
 
-            // 等待指定时间间隔
-            await new Promise(resolve => setTimeout(resolve, interval));
-            attempts++;
+            // 如果状态是 pending，继续轮询
+            if (status.status === 'pending') {
+                await new Promise(resolve => setTimeout(resolve, interval));
+                attempts++;
+            } else {
+                // 如果状态不是 pending 或 completed，抛出错误
+                throw new Error(`Unexpected status: ${status.status}`);
+            }
         } catch (error) {
             console.error('Error polling image status:', error);
-            throw error;
+            // 如果发生错误，尝试继续轮询
+            await new Promise(resolve => setTimeout(resolve, interval));
+            attempts++;
         }
     }
 
