@@ -95,15 +95,24 @@ app.post(`${API_PREFIX}v1/chat/completions`, authenticateToken, async (req, res)
                 // 等待图像生成完成
                 try {
                     const status = await pollImageStatus(jobId);
-                    const markdownResponse = `<image_generation> jobId='${jobId}' prompt='${prompt}' negative='${negative}'</image_generation>\n![Generated Image](${imageUrl})`;
 
-                    res.json({
-                        id: jobId,
-                        model: model || 'AkashGen',
-                        response: markdownResponse,
-                        status: 'completed',
-                        imageUrl
-                    });
+                    if (status.status === 'completed') {
+                        const markdownResponse = `<image_generation> jobId='${jobId}' prompt='${prompt}' negative='${negative}'</image_generation>\n![Generated Image](${imageUrl})`;
+
+                        res.json({
+                            id: jobId,
+                            model: model || 'AkashGen',
+                            response: markdownResponse,
+                            status: 'completed',
+                            imageUrl
+                        });
+                    } else {
+                        // 如果状态是 'failed'
+                        res.status(500).json({
+                            error: 'Image generation failed',
+                            details: status.error
+                        });
+                    }
                 } catch (error) {
                     console.error('Error waiting for image generation:', error);
                     res.status(500).json({ error: 'Failed to wait for image generation', details: error.message });
@@ -208,7 +217,7 @@ function generateRequestId() {
     return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
-// 轮询检查图像状态直到完成
+// 轮询检查图像状态直到完成或失败
 async function pollImageStatus(jobId, maxAttempts = 30, interval = 1000) {
     let attempts = 0;
 
@@ -218,14 +227,18 @@ async function pollImageStatus(jobId, maxAttempts = 30, interval = 1000) {
 
             if (status.status === 'completed') {
                 return status;
-            }
-
-            // 如果状态是 pending，继续轮询
-            if (status.status === 'pending') {
+            } else if (status.status === 'failed') {
+                // 如果状态是失败，立即返回错误
+                return {
+                    status: 'failed',
+                    error: status.result
+                };
+            } else if (status.status === 'pending') {
+                // 如果状态是 pending，继续轮询
                 await new Promise(resolve => setTimeout(resolve, interval));
                 attempts++;
             } else {
-                // 如果状态不是 pending 或 completed，抛出错误
+                // 如果状态不是 pending、completed 或 failed，抛出错误
                 throw new Error(`Unexpected status: ${status.status}`);
             }
         } catch (error) {
@@ -236,7 +249,11 @@ async function pollImageStatus(jobId, maxAttempts = 30, interval = 1000) {
         }
     }
 
-    throw new Error('Image generation timed out');
+    // 如果超时，返回超时错误
+    return {
+        status: 'failed',
+        error: 'Image generation timed out'
+    };
 }
 
 // 对于 Vercel
