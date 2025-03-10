@@ -118,7 +118,9 @@ app.post(`${API_PREFIX}v1/chat/completions`, authenticateToken, async (req, res)
                 });
             }
         } else {
-            res.status(400).json({ error: 'Failed to extract jobId from response' });
+            // 增加详细日志记录
+            console.error('Failed to extract jobId from response. Full response:', chatResponse);
+            res.status(400).json({ error: 'Failed to extract jobId from response', details: { response: chatResponse } });
         }
     } catch (error) {
         console.error('Error calling Akash API:', error);
