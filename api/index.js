@@ -2,13 +2,21 @@ const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const API_PREFIX = process.env.API_PREFIX || '/';
 const API_KEY = process.env.API_KEY || 'default-secret-key';
-const SESSION_TOKEN = process.env.SESSION_TOKEN || '';
+let SESSION_TOKEN = process.env.SESSION_TOKEN || '';
+
+// 如果 SESSION_TOKEN 未设置，则生成一个随机的 session token
+if (!SESSION_TOKEN) {
+    const randomString = crypto.randomBytes(32).toString('hex'); // 生成一个32字节的随机字符串
+    SESSION_TOKEN = crypto.createHash('sha256').update(randomString).digest('hex'); // 计算其 SHA-256 哈希
+    console.log('Generated SESSION_TOKEN:', SESSION_TOKEN);
+}
 
 app.use(cors());
 app.use(bodyParser.json());

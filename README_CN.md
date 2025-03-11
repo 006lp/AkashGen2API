@@ -25,7 +25,8 @@
 根据 `.env.example` 创建一个 `.env` 文件，并设置以下变量：
 
 - `API_KEY`：用于身份验证的密钥（例如 `your-secret-key`）
-- `SESSION_TOKEN`：您的 AkashGen 会话令牌（从 AkashGen 网站获取）
+- `SESSION_TOKEN`：您的 AkashGen 会话令牌（从 AkashGen 网站获取）[选填]
+> 不再强制要求填写此字段，逆向时发现似乎只要是SHA-256哈希值都能接受
 - `API_PREFIX`：API 路由前缀（默认：`/`）
 - `PORT`：服务器端口（默认：3000）
 

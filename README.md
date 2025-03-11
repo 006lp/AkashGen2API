@@ -25,7 +25,8 @@ This is an API proxy service for the image generation functionality of AkashGen.
 Create a `.env` file based on `.env.example` and set the following variables:
 
 - `API_KEY`: The key used for authentication (e.g., `your-secret-key`)
-- `SESSION_TOKEN`: Your AkashGen session token (obtained from the AkashGen website)
+- `SESSION_TOKEN`: Your AkashGen session token (obtained from the AkashGen website) [Optional] 
+> The field is no longer mandatory. Reverse engineering suggests that any SHA-256 hash value is accepted.
 - `API_PREFIX`: API route prefix (default: `/`)
 - `PORT`: Server port (default: `3000`)
 
